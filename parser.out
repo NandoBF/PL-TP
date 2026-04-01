@@ -1,0 +1,294 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    CONTINUE
+    DIVIDE
+    DO
+    ELSE
+    ENDIF
+    EQUALS
+    FALSE
+    GOTO
+    IF
+    MINUS
+    PLUS
+    PRINT
+    READ
+    STRING
+    THEN
+    TIMES
+    TRUE
+
+Grammar
+
+Rule 0     S' -> program
+Rule 1     program -> PROGRAM ID statements END
+Rule 2     statements -> statement
+Rule 3     statements -> statements statement
+Rule 4     statement -> declaration
+Rule 5     var_dec -> ID
+Rule 6     var_dec -> ID LPAREN NUMBER RPAREN
+Rule 7     id_list -> var_dec
+Rule 8     id_list -> id_list COMMA var_dec
+Rule 9     type -> INTEGER
+Rule 10    type -> REAL
+Rule 11    type -> LOGICAL
+Rule 12    declaration -> type id_list
+
+Terminals, with rules where they appear
+
+COMMA                : 8
+CONTINUE             : 
+DIVIDE               : 
+DO                   : 
+ELSE                 : 
+END                  : 1
+ENDIF                : 
+EQUALS               : 
+FALSE                : 
+GOTO                 : 
+ID                   : 1 5 6
+IF                   : 
+INTEGER              : 9
+LOGICAL              : 11
+LPAREN               : 6
+MINUS                : 
+NUMBER               : 6
+PLUS                 : 
+PRINT                : 
+PROGRAM              : 1
+READ                 : 
+REAL                 : 10
+RPAREN               : 6
+STRING               : 
+THEN                 : 
+TIMES                : 
+TRUE                 : 
+error                : 
+
+Nonterminals, with rules where they appear
+
+declaration          : 4
+id_list              : 8 12
+program              : 0
+statement            : 2 3
+statements           : 1 3
+type                 : 12
+var_dec              : 7 8
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . program
+    (1) program -> . PROGRAM ID statements END
+
+    PROGRAM         shift and go to state 2
+
+    program                        shift and go to state 1
+
+state 1
+
+    (0) S' -> program .
+
+
+
+state 2
+
+    (1) program -> PROGRAM . ID statements END
+
+    ID              shift and go to state 3
+
+
+state 3
+
+    (1) program -> PROGRAM ID . statements END
+    (2) statements -> . statement
+    (3) statements -> . statements statement
+    (4) statement -> . declaration
+    (12) declaration -> . type id_list
+    (9) type -> . INTEGER
+    (10) type -> . REAL
+    (11) type -> . LOGICAL
+
+    INTEGER         shift and go to state 8
+    REAL            shift and go to state 9
+    LOGICAL         shift and go to state 10
+
+    statements                     shift and go to state 4
+    statement                      shift and go to state 5
+    declaration                    shift and go to state 6
+    type                           shift and go to state 7
+
+state 4
+
+    (1) program -> PROGRAM ID statements . END
+    (3) statements -> statements . statement
+    (4) statement -> . declaration
+    (12) declaration -> . type id_list
+    (9) type -> . INTEGER
+    (10) type -> . REAL
+    (11) type -> . LOGICAL
+
+    END             shift and go to state 11
+    INTEGER         shift and go to state 8
+    REAL            shift and go to state 9
+    LOGICAL         shift and go to state 10
+
+    statement                      shift and go to state 12
+    declaration                    shift and go to state 6
+    type                           shift and go to state 7
+
+state 5
+
+    (2) statements -> statement .
+
+    END             reduce using rule 2 (statements -> statement .)
+    INTEGER         reduce using rule 2 (statements -> statement .)
+    REAL            reduce using rule 2 (statements -> statement .)
+    LOGICAL         reduce using rule 2 (statements -> statement .)
+
+
+state 6
+
+    (4) statement -> declaration .
+
+    END             reduce using rule 4 (statement -> declaration .)
+    INTEGER         reduce using rule 4 (statement -> declaration .)
+    REAL            reduce using rule 4 (statement -> declaration .)
+    LOGICAL         reduce using rule 4 (statement -> declaration .)
+
+
+state 7
+
+    (12) declaration -> type . id_list
+    (7) id_list -> . var_dec
+    (8) id_list -> . id_list COMMA var_dec
+    (5) var_dec -> . ID
+    (6) var_dec -> . ID LPAREN NUMBER RPAREN
+
+    ID              shift and go to state 15
+
+    id_list                        shift and go to state 13
+    var_dec                        shift and go to state 14
+
+state 8
+
+    (9) type -> INTEGER .
+
+    ID              reduce using rule 9 (type -> INTEGER .)
+
+
+state 9
+
+    (10) type -> REAL .
+
+    ID              reduce using rule 10 (type -> REAL .)
+
+
+state 10
+
+    (11) type -> LOGICAL .
+
+    ID              reduce using rule 11 (type -> LOGICAL .)
+
+
+state 11
+
+    (1) program -> PROGRAM ID statements END .
+
+    $end            reduce using rule 1 (program -> PROGRAM ID statements END .)
+
+
+state 12
+
+    (3) statements -> statements statement .
+
+    END             reduce using rule 3 (statements -> statements statement .)
+    INTEGER         reduce using rule 3 (statements -> statements statement .)
+    REAL            reduce using rule 3 (statements -> statements statement .)
+    LOGICAL         reduce using rule 3 (statements -> statements statement .)
+
+
+state 13
+
+    (12) declaration -> type id_list .
+    (8) id_list -> id_list . COMMA var_dec
+
+    END             reduce using rule 12 (declaration -> type id_list .)
+    INTEGER         reduce using rule 12 (declaration -> type id_list .)
+    REAL            reduce using rule 12 (declaration -> type id_list .)
+    LOGICAL         reduce using rule 12 (declaration -> type id_list .)
+    COMMA           shift and go to state 16
+
+
+state 14
+
+    (7) id_list -> var_dec .
+
+    COMMA           reduce using rule 7 (id_list -> var_dec .)
+    END             reduce using rule 7 (id_list -> var_dec .)
+    INTEGER         reduce using rule 7 (id_list -> var_dec .)
+    REAL            reduce using rule 7 (id_list -> var_dec .)
+    LOGICAL         reduce using rule 7 (id_list -> var_dec .)
+
+
+state 15
+
+    (5) var_dec -> ID .
+    (6) var_dec -> ID . LPAREN NUMBER RPAREN
+
+    COMMA           reduce using rule 5 (var_dec -> ID .)
+    END             reduce using rule 5 (var_dec -> ID .)
+    INTEGER         reduce using rule 5 (var_dec -> ID .)
+    REAL            reduce using rule 5 (var_dec -> ID .)
+    LOGICAL         reduce using rule 5 (var_dec -> ID .)
+    LPAREN          shift and go to state 17
+
+
+state 16
+
+    (8) id_list -> id_list COMMA . var_dec
+    (5) var_dec -> . ID
+    (6) var_dec -> . ID LPAREN NUMBER RPAREN
+
+    ID              shift and go to state 15
+
+    var_dec                        shift and go to state 18
+
+state 17
+
+    (6) var_dec -> ID LPAREN . NUMBER RPAREN
+
+    NUMBER          shift and go to state 19
+
+
+state 18
+
+    (8) id_list -> id_list COMMA var_dec .
+
+    COMMA           reduce using rule 8 (id_list -> id_list COMMA var_dec .)
+    END             reduce using rule 8 (id_list -> id_list COMMA var_dec .)
+    INTEGER         reduce using rule 8 (id_list -> id_list COMMA var_dec .)
+    REAL            reduce using rule 8 (id_list -> id_list COMMA var_dec .)
+    LOGICAL         reduce using rule 8 (id_list -> id_list COMMA var_dec .)
+
+
+state 19
+
+    (6) var_dec -> ID LPAREN NUMBER . RPAREN
+
+    RPAREN          shift and go to state 20
+
+
+state 20
+
+    (6) var_dec -> ID LPAREN NUMBER RPAREN .
+
+    COMMA           reduce using rule 6 (var_dec -> ID LPAREN NUMBER RPAREN .)
+    END             reduce using rule 6 (var_dec -> ID LPAREN NUMBER RPAREN .)
+    INTEGER         reduce using rule 6 (var_dec -> ID LPAREN NUMBER RPAREN .)
+    REAL            reduce using rule 6 (var_dec -> ID LPAREN NUMBER RPAREN .)
+    LOGICAL         reduce using rule 6 (var_dec -> ID LPAREN NUMBER RPAREN .)
+
