@@ -24,3 +24,21 @@ code2 = """PROGRAM TESTE2
 INTEGER I, NUMS(5), SOMA
 END"""
 testar_codigo(code2)
+
+code_assign = """PROGRAM TESTE3
+FAT = 1
+NUMS(I) = 5
+END"""
+testar_codigo(code_assign)
+
+code_math = """PROGRAM MATH
+FAT = FAT * I
+SOMA = 10 + 5 * 2
+END"""
+testar_codigo(code_math)
+
+code_rel = """PROGRAM RELACIONAL
+VER1 = A .GE. 0
+VER2 = I .LE. NUM / 2
+END"""
+testar_codigo(code_rel)

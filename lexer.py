@@ -21,7 +21,7 @@ reserved = {
 }
 
 tokens = [
-    'ID', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING'
+    'ID', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE'
 ] + list(reserved.values())
 
 t_PLUS      = r'\+'
@@ -32,6 +32,12 @@ t_EQUALS    = r'='
 t_LPAREN    = r'\('
 t_RPAREN    = r'\)'
 t_COMMA     = r','
+t_EQ        = r'\.EQ\.'
+t_NE        = r'\.NE\.'
+t_LT        = r'\.LT\.'
+t_LE        = r'\.LE\.'
+t_GT        = r'\.GT\.'
+t_GE        = r'\.GE\.'
 t_ignore    = ' \t'
 
 
