@@ -42,3 +42,25 @@ VER1 = A .GE. 0
 VER2 = I .LE. NUM / 2
 END"""
 testar_codigo(code_rel)
+
+
+code_logic = """PROGRAM LOGIC
+ISNUMBER = .TRUE.
+ISLEPRIM = I .LE. (NUM/2) .AND. ISPRIM
+END"""
+testar_codigo(code_logic)
+
+
+code_if = """PROGRAM TESTEIF
+IF (NUM .GT. 0) THEN
+    ISPRIM = .TRUE.
+ELSE
+    ISPRIM = .FALSE.
+ENDIF
+
+IF (ISPRIM) THEN
+    SOMA = 1
+ENDIF
+END"""
+
+testar_codigo(code_if)

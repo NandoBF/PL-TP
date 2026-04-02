@@ -15,14 +15,15 @@ reserved = {
     'CONTINUE': 'CONTINUE',
     'PRINT': 'PRINT',
     'READ': 'READ',
-    'END': 'END',
-    '.TRUE.': 'TRUE',
-    '.FALSE.': 'FALSE'
+    'END': 'END'
 }
 
+tokens_relational = ['EQ', 'NE', 'LT', 'LE', 'GT', 'GE']
+tokens_logics = ['AND', 'OR', 'NOT', 'TRUE', 'FALSE']
+
 tokens = [
-    'ID', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE'
-] + list(reserved.values())
+    'ID', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING' 
+] + tokens_relational + tokens_logics + list(reserved.values())
 
 t_PLUS      = r'\+'
 t_MINUS     = r'-'
@@ -38,6 +39,11 @@ t_LT        = r'\.LT\.'
 t_LE        = r'\.LE\.'
 t_GT        = r'\.GT\.'
 t_GE        = r'\.GE\.'
+t_AND       = r'\.AND\.'
+t_OR        = r'\.OR\.'
+t_NOT       = r'\.NOT\.'
+t_TRUE      = r'\.TRUE\.'
+t_FALSE     = r'\.FALSE\.'
 t_ignore    = ' \t'
 
 
