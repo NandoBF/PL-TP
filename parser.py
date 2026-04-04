@@ -11,6 +11,25 @@ precedence = (
     ('left', 'TIMES', 'DIVIDE'),
 )
 
+# Necessario pois com funcoes existem muitos pares PROGRAM END
+def p_compilation_unit(p):
+    '''compilation_unit : unit
+                        | compilation_unit unit'''
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[2])
+        p[0] = p[1]
+
+def p_unit(p):
+    '''unit : program_block
+            | function_definition'''
+    p[0] = p[1]
+
+def p_program_block(p):
+    '''program_block : PROGRAM ID statements END'''
+    p[0] = ('program', p[2], p[3])
+
 def p_program(p):
     '''program : PROGRAM ID statements END'''
     p[0] = ('program', p[2], p[3])
@@ -37,7 +56,13 @@ def p_statements(p):
 def p_statement(p):
     '''statement : declaration
                  | assignment
-                 | if_statement'''
+                 | if_statement
+                 | do_loop
+                 | continue_statement
+                 | print_statement
+                 | read_statement
+                 | goto_statement
+                 | return_statement'''
     p[0] = p[1]    
 
 def p_var_dec(p):
@@ -47,6 +72,36 @@ def p_var_dec(p):
         p[0] = ('var', p[1])
     else:
         p[0] = ('array', p[1], p[3])
+
+
+# strings
+def p_expression_string(p):
+    '''expression : STRING'''
+    p[0] = ('string', p[1])
+
+
+def p_expression_list(p):
+    '''expression_list : expression
+                       | expression_list COMMA expression'''
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+def p_target_list(p):
+    '''target_list : assign_target
+                   | target_list COMMA assign_target'''
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+
+def p_goto_statement(p):
+    '''goto_statement : GOTO NUMBER'''
+    p[0] = ('goto', p[2])
 
 
 # relational expressions
@@ -103,6 +158,28 @@ def p_if_statement(p):
     else:
         p[0] = ('if', p[3], p[6], p[8])
 
+
+
+
+def p_do_loop(p):
+    '''do_loop : DO NUMBER ID EQUALS expression COMMA expression'''
+    p[0] = ('do', p[2], p[3], p[5], p[7])
+
+def p_continue_statement(p):
+    '''continue_statement : NUMBER CONTINUE'''
+    p[0] = ('continue', p[1])
+
+
+def p_print_statement(p):
+    '''print_statement : PRINT TIMES COMMA expression_list'''
+    p[0] = ('print', p[4])
+
+
+def p_read_statement(p):
+    '''read_statement : READ TIMES COMMA target_list'''
+    p[0] = ('read', p[4])
+
+
 # parenthesis 
 def p_expression_group(p):
     '''expression : LPAREN expression RPAREN'''
@@ -138,6 +215,32 @@ def p_id_list(p):
         # more than 1 ID
         p[1].append(p[3])
         p[0] = p[1]
+
+
+# FUNCTION THINGS
+
+def p_arg_list(p):
+    '''arg_list : ID
+                | arg_list COMMA ID'''
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+def p_return_statement(p):
+    '''return_statement : RETURN'''
+    p[0] = ('return',)
+
+def p_function_definition(p):
+    '''function_definition : type FUNCTION ID LPAREN arg_list RPAREN statements END'''
+    p[0] = ('function_def', p[1], p[3], p[5], p[7])
+
+def p_expression_call(p):
+    '''expression : ID LPAREN expression_list RPAREN'''
+    p[0] = ('function_call', p[1], p[3])
+
+# #################3
 
 def p_type(p):
     '''type : INTEGER

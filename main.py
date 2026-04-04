@@ -64,3 +64,34 @@ ENDIF
 END"""
 
 testar_codigo(code_if)
+
+
+code_do = """PROGRAM DO_LOOP
+DO 10 I = 1, N
+    FAT = FAT * I
+10 CONTINUE
+END"""
+testar_codigo(code_do)
+
+
+code_print_read = """PROGRAM PRINTREAD
+PRINT *, 'Numero a'
+READ *, N
+READ *, NUMS(I)
+PRINT *, 'Fatorial de', N, ':', FAT
+END"""
+
+testar_codigo(code_print_read)
+
+
+codigo_funcoes = """PROGRAM PRINCIPAL
+RESULT = CONVRT(NUM, BASE)
+END
+
+INTEGER FUNCTION CONVRT(N, B)
+VAL = N + B
+CONVRT = VAL
+RETURN
+END"""
+
+testar_codigo(codigo_funcoes)

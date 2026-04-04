@@ -15,7 +15,9 @@ reserved = {
     'CONTINUE': 'CONTINUE',
     'PRINT': 'PRINT',
     'READ': 'READ',
-    'END': 'END'
+    'END': 'END',
+    'FUNCTION': 'FUNCTION',
+    'RETURN': 'RETURN'
 }
 
 tokens_relational = ['EQ', 'NE', 'LT', 'LE', 'GT', 'GE']
