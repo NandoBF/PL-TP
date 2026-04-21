@@ -1,5 +1,6 @@
 from lexer import lexer
 from parser import parser
+from semantic import analyze_semantics
 
 def testar_codigo(fortran_code):
     print(f"---Testing code---\n{fortran_code}\n------")
@@ -26,10 +27,20 @@ END"""
 testar_codigo(code2)
 
 code_assign = """PROGRAM TESTE3
+INTEGER FAT
+INTEGER NUMS(5)
 FAT = 1
 NUMS(I) = 5
 END"""
-testar_codigo(code_assign)
+#testar_codigo(code_assign)
+
+tree_assign = parser.parse(code_assign)
+
+if tree_assign:
+    print("\n--- Syntatic analysis ---\n")
+    analyze_semantics(tree_assign)
+
+
 
 code_math = """PROGRAM MATH
 FAT = FAT * I
@@ -95,3 +106,4 @@ RETURN
 END"""
 
 testar_codigo(codigo_funcoes)
+
