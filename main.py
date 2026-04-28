@@ -1,6 +1,7 @@
 from lexer import lexer
 from parser import parser
 from semantic import analyze_semantics
+from codegen import generate_code
 
 def testar_codigo(fortran_code):
     print(f"---Testing code---\n{fortran_code}\n------")
@@ -17,199 +18,43 @@ def testar_codigo(fortran_code):
     print(result)
     print("\n")
 
-
-code1 = """PROGRAM TESTE
-INTEGER N
-END"""
-testar_codigo(code1)
-
-
-code2 = """PROGRAM TESTE2
-INTEGER I, NUMS(5), SOMA
-END"""
-testar_codigo(code2)
-
-code_assign = """PROGRAM TESTE3
-INTEGER FAT
-INTEGER NUMS(5)
-FAT = 1
-NUMS(I) = 5
-END"""
-#testar_codigo(code_assign)
-
-tree_assign = parser.parse(code_assign)
-
-code_math = """PROGRAM MATH
-FAT = FAT * I
-SOMA = 10 + 5 * 2
-END"""
-testar_codigo(code_math)
-
-code_rel = """PROGRAM RELACIONAL
-VER1 = A .GE. 0
-VER2 = I .LE. NUM / 2
-END"""
-testar_codigo(code_rel)
+def compile_code(code):
+    syn_tree = parser.parse(code)
+    if syn_tree:
+        analyze_semantics(syn_tree)
+        return generate_code(syn_tree)
 
 
-code_logic = """PROGRAM LOGIC
-ISNUMBER = .TRUE.
-ISLEPRIM = I .LE. (NUM/2) .AND. ISPRIM
-END"""
-testar_codigo(code_logic)
-
-
-code_if = """PROGRAM TESTEIF
-IF (NUM .GT. 0) THEN
-    ISPRIM = .TRUE.
-ELSE
-    ISPRIM = .FALSE.
-ENDIF
-
-IF (ISPRIM) THEN
-    SOMA = 1
-ENDIF
-END"""
-
-testar_codigo(code_if)
-
-
-code_do = """PROGRAM DO_LOOP
-DO 10 I = 1, N
-    FAT = FAT * I
-10 CONTINUE
-END"""
-testar_codigo(code_do)
-
-
-code_print_read = """PROGRAM PRINTREAD
-PRINT *, 'Numero a'
-READ *, N
-READ *, NUMS(I)
-PRINT *, 'Fatorial de', N, ':', FAT
-END"""
-
-testar_codigo(code_print_read)
-
-
-codigo_funcoes = """PROGRAM PRINCIPAL
-RESULT = CONVRT(NUM, BASE)
-END
-
-INTEGER FUNCTION CONVRT(N, B)
-VAL = N + B
-CONVRT = VAL
-RETURN
-END"""
-
-testar_codigo(codigo_funcoes)
-
-
-
-example_1 = """
-PROGRAM HELLO
-PRINT *, 'Ola, Mundo!'
+simple_test_code = """
+PROGRAM MAT
+INTEGER A, B, C
+A = 10
+B = 5
+C = A + B * 2
 END
 """
 
-example_2 = """
-PROGRAM FATORIAL
-INTEGER N, I, FAT
-PRINT *, 'Introduza um numero inteiro positivo:'
-READ *, N
-FAT = 1
-DO 10 I = 1, N
-    FAT = FAT * I
-10 CONTINUE
-PRINT *, 'Fatorial de ', N, ': ', FAT
-END
-"""
-example_3 = """
-PROGRAM PRIMO
-INTEGER NUM, I
-LOGICAL ISPRIM
-PRINT *, 'Introduza um numero inteiro positivo:'
-READ *, NUM
-ISPRIM = .TRUE.
-I = 2
-20 IF (I .LE. (NUM/2) .AND. ISPRIM) THEN
-    IF (MOD(NUM, I) .EQ. 0) THEN
-    ISPRIM = .FALSE.
-    ENDIF
-    I = I + 1
-    GOTO 20
-ENDIF
-IF (ISPRIM) THEN
-    PRINT *, NUM, ' e um numero primo'
-ELSE
-    PRINT *, NUM, ' nao e um numero primo'
-ENDIF
-END
-"""
+print("Compiling Code")
+compiled = compile_code(simple_test_code)
 
-example_4 = """
-PROGRAM SOMAARR
-INTEGER NUMS(5)
-INTEGER I, SOMA
-SOMA = 0
-PRINT *, 'Introduza 5 numeros inteiros:'
-DO 30 I = 1, 5
-    READ *, NUMS(I)
-    SOMA = SOMA + NUMS(I)
-30 CONTINUE
-PRINT *, 'A soma dos numeros e: ', SOMA
-END
-"""
+print("--- Code Start ---")
+print(compiled)
+print("--- Code End ---")
 
-example_5 = """
-PROGRAM CONVERSOR
-INTEGER NUM, BASE, RESULT, CONVRT
-PRINT *, 'INTRODUZA UM NUMERO DECIMAL INTEIRO:'
-READ *, NUM
-DO 10 BASE = 2, 9
-    RESULT = CONVRT(NUM, BASE)
-    PRINT *, 'BASE ', BASE, ': ', RESULT
-10 CONTINUE
-END
-INTEGER FUNCTION CONVRT(N, B)
-INTEGER N, B, QUOT, REM, POT, VAL
+code_if_test = """PROGRAM TESTEIF
+INTEGER QUOT, VAL
+QUOT = 5
 VAL = 0
-POT = 1
-QUOT = N
 20 IF (QUOT .GT. 0) THEN
-    REM = MOD(QUOT, B)
-    VAL = VAL + (REM * POT)
-    QUOT = QUOT / B
-    POT = POT * 10
+    VAL = VAL + 1
+    QUOT = QUOT - 1
     GOTO 20
 ENDIF
-CONVRT = VAL
-RETURN
-END
-"""
+END"""
 
+compiled = compile_code(code_if_test)
 
-function_code = """
-PROGRAM TESTEFUNC
-INTEGER X, Y, Z, RESULTADO
-X = 10
-Y = 5
-Z = 15
-RESULTADO = SOMA(X, Y)
-PRINT *, 'O RESULTADO E: ', RESULTADO
-END
-
-INTEGER FUNCTION SOMA(A, B)
-INTEGER A, B
-SOMA = A + B
-RETURN
-END
-"""
-
-testar_codigo(example_1)
-testar_codigo(example_2)
-testar_codigo(example_3)
-testar_codigo(example_4)
-testar_codigo(example_5)
-testar_codigo(function_code)
+print("--- Code Start ---")
+print(compiled)
+print("--- Code End ---")
 
