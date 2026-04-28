@@ -44,26 +44,27 @@ def p_statements(p):
         p[0] = p[1]
 
 
-
-    # '''statement : declaration
-    #              | assignment
-    #              | print_statement
-    #              | read_statement
-    #              | if_statement
-    #              | goto_statement
-    #              | do_loop
-    #              | continue_statement'''
-def p_statement(p):
-    '''statement : declaration
-                 | assignment
-                 | if_statement
-                 | do_loop
-                 | continue_statement
-                 | print_statement
-                 | read_statement
-                 | goto_statement
-                 | return_statement'''
+def p_instruction(p):
+    '''instruction : declaration
+                   | assignment
+                   | if_statement
+                   | do_loop
+                   | continue_statement
+                   | print_statement
+                   | read_statement
+                   | goto_statement
+                   | return_statement'''
     p[0] = p[1]    
+
+
+def p_statement(p):
+    '''statement : NUMBER instruction
+                 | instruction'''
+    if len(p) == 3:
+        p[0] = ('labeled', p[1], p[2])
+    else:
+        p[0] = p[1]
+
 
 def p_var_dec(p):
     '''var_dec : ID
@@ -166,8 +167,8 @@ def p_do_loop(p):
     p[0] = ('do', p[2], p[3], p[5], p[7])
 
 def p_continue_statement(p):
-    '''continue_statement : NUMBER CONTINUE'''
-    p[0] = ('continue', p[1])
+    '''continue_statement : CONTINUE'''
+    p[0] = ('continue')
 
 
 def p_print_statement(p):
