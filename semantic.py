@@ -9,6 +9,12 @@ class SemanticAnalyzer:
         self.errors = []
 
     def analyze(self, ast):
+        # Register intrinsic functions
+        try:
+            self.table.declare_function('MOD', 'INTEGER', 2)
+        except SemanticError:
+            pass
+
         # Register all functions first
         if isinstance(ast, list):
             for unit in ast:
@@ -16,8 +22,20 @@ class SemanticAnalyzer:
                     return_type = unit[1]
                     func_name = unit[2]
                     args = unit[3]
+                    if '_' in func_name:
+                        self.errors.append(f"Semantic Error: Identifier '{func_name}' contains an underscore, which is not supported!")
                     try:
                         self.table.declare_function(func_name, return_type, len(args))
+                    except SemanticError as e:
+                        self.errors.append(str(e))
+        
+                elif unit[0] == 'subroutine_def':
+                    func_name = unit[1]
+                    args = unit[2]
+                    if '_' in func_name:
+                        self.errors.append(f"Semantic Error: Identifier '{func_name}' contains an underscore, which is not supported!")
+                    try:
+                        self.table.declare_function(func_name, 'VOID', len(args))
                     except SemanticError as e:
                         self.errors.append(str(e))
         
@@ -98,6 +116,8 @@ class SemanticAnalyzer:
         for var in variable_list:
             nat = var[0]
             name = var[1]
+            if '_' in name:
+                self.errors.append(f"Semantic Error: Identifier '{name}' contains an underscore, which is not supported!")
             try:
                 if nat == 'array':
                     size = var[2]
@@ -151,6 +171,36 @@ class SemanticAnalyzer:
         self.table.exit_scope()
         print(f"Exiting scope for function: {func_name}")
         
+    def visit_subroutine_def(self, node):
+        func_name = node[1]
+        body = node[3]
+        print(f"Analysing subroutine: {func_name}")
+
+        self.table.enter_scope()
+        self.traverse(body)
+        self.table.exit_scope()
+        print(f"Exiting scope for subroutine: {func_name}")
+
+    def visit_call(self, node):
+        func_name = node[1]
+        arguments = node[2]
+
+        try:
+            func_info = self.table.lookup(func_name)
+            if func_info is None or func_info.get('nature') != 'function':
+                raise SemanticError(f"Semantic Error: '{func_name}' is not a subroutine!")
+
+            expected_arg_num = func_info['arg_num']
+            actual_arg_num = len(arguments)
+
+            if actual_arg_num != expected_arg_num:
+                raise SemanticError(f"Semantic Error: '{func_name}' expects [{expected_arg_num}] arguments but got [{actual_arg_num}]!")
+
+            for arg in arguments:
+                self.traverse(arg)
+        except SemanticError as e:
+            self.errors.append(str(e))
+        
     def visit_if(self, node):
         cond_type = self.traverse(node[1])
         if cond_type != 'LOGICAL' and cond_type != 'UNKNOWN':
@@ -172,6 +222,9 @@ class SemanticAnalyzer:
 
     def visit_num(self, node):
         return 'INTEGER'
+        
+    def visit_float(self, node):
+        return 'REAL'
         
     def visit_bool(self, node):
         return 'LOGICAL'

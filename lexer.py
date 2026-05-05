@@ -17,6 +17,8 @@ reserved = {
     'READ': 'READ',
     'END': 'END',
     'FUNCTION': 'FUNCTION',
+    'SUBROUTINE': 'SUBROUTINE',
+    'CALL': 'CALL',
     'RETURN': 'RETURN'
 }
 
@@ -24,7 +26,7 @@ tokens_relational = ['EQ', 'NE', 'LT', 'LE', 'GT', 'GE']
 tokens_logics = ['AND', 'OR', 'NOT', 'TRUE', 'FALSE']
 
 tokens = [
-    'ID', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING' 
+    'ID', 'FLOAT', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'LPAREN', 'RPAREN', 'COMMA', 'STRING' 
 ] + tokens_relational + tokens_logics + list(reserved.values())
 
 t_PLUS      = r'\+'
@@ -57,6 +59,11 @@ def t_STRING(t):
 def t_ID(t):
     r'[A-Za-z][A-Za-z0-9_]*'
     t.type = reserved.get(t.value.upper(), 'ID')
+    return t
+
+def t_FLOAT(t):
+    r'\d+\.\d+'
+    t.value = float(t.value)
     return t
 
 def t_NUMBER(t):

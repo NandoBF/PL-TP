@@ -1,0 +1,8 @@
+PROGRAM TESTFLOATMOD
+REAL F
+INTEGER M
+F = 3.14
+M = MOD(10, 3)
+PRINT *, 'Float is ', F
+PRINT *, 'Mod of 10 and 3 is ', M
+END

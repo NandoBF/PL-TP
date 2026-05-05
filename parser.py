@@ -23,7 +23,8 @@ def p_compilation_unit(p):
 
 def p_unit(p):
     '''unit : program_block
-            | function_definition'''
+            | function_definition
+            | subroutine_definition'''
     p[0] = p[1]
 
 def p_program_block(p):
@@ -53,7 +54,8 @@ def p_instruction(p):
                    | print_statement
                    | read_statement
                    | goto_statement
-                   | return_statement'''
+                   | return_statement
+                   | call_statement'''
     p[0] = p[1]    
 
 
@@ -190,9 +192,12 @@ def p_expression_group(p):
 # basic expression for assignment
 def p_expression_basic(p):
     '''expression : NUMBER
+                  | FLOAT
                   | ID'''
     if type(p[1]) == int:
         p[0] = ('num', p[1])
+    elif type(p[1]) == float:
+        p[0] = ('float', p[1])
     else:
         p[0] = ('var_ref', p[1])
 
@@ -236,6 +241,22 @@ def p_return_statement(p):
 def p_function_definition(p):
     '''function_definition : type FUNCTION ID LPAREN arg_list RPAREN statements END'''
     p[0] = ('function_def', p[1], p[3], p[5], p[7])
+
+def p_subroutine_definition(p):
+    '''subroutine_definition : SUBROUTINE ID LPAREN arg_list RPAREN statements END
+                             | SUBROUTINE ID statements END'''
+    if len(p) == 8:
+        p[0] = ('subroutine_def', p[2], p[4], p[6])
+    else:
+        p[0] = ('subroutine_def', p[2], [], p[3])
+
+def p_call_statement(p):
+    '''call_statement : CALL ID LPAREN expression_list RPAREN
+                      | CALL ID'''
+    if len(p) == 6:
+        p[0] = ('call', p[2], p[4])
+    else:
+        p[0] = ('call', p[2], [])
 
 def p_expression_call(p):
     '''expression : ID LPAREN expression_list RPAREN'''

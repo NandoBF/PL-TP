@@ -14,6 +14,12 @@ class CodeGenerator:
         self.code.append(instruction)
 
     def generate(self, ast):
+        # Register intrinsic functions
+        try:
+            self.table.declare_function('MOD', 'INTEGER', 2)
+        except:
+            pass
+
         # Pre-register functions so they can be called before they are defined in code
         if isinstance(ast, list):
             for node in ast:
@@ -22,6 +28,10 @@ class CodeGenerator:
                     func_name = node[2]
                     args = node[3]
                     self.table.declare_function(func_name, func_type, len(args))
+                elif node[0] == 'subroutine_def':
+                    func_name = node[1]
+                    args = node[2]
+                    self.table.declare_function(func_name, 'VOID', len(args))
 
         self.traverse(ast)
         return "\n".join(self.code)
@@ -66,8 +76,6 @@ class CodeGenerator:
             name = var[1]
 
             if nature == 'array':
-                # node[2] was incorrectly used in the original for size
-                # var is ('array', 'name', size)
                 size = var[2]
                 self.table.declare(name, data_type, is_array=True, size=size)
                 space_to_alloc += size
@@ -107,7 +115,6 @@ class CodeGenerator:
             self.emit(f"PUSHI {address}")
             self.emit("PADD")
             
-            # PUSH index (Fortran arrays are 1-based, we make it 0-based for VM)
             self.traverse(index_expr)
             self.emit("PUSHI 1")
             self.emit("SUB")
@@ -156,6 +163,12 @@ class CodeGenerator:
             self.visit_array_ref(('array_ref', name, args[0]))
             return
             
+        if name.upper() == 'MOD':
+            self.traverse(args[0])
+            self.traverse(args[1])
+            self.emit("MOD")
+            return
+            
         # Function Call:
         # 1. PUSHN 1 (Return value placeholder)
         self.emit("PUSHN 1")
@@ -163,14 +176,32 @@ class CodeGenerator:
         for arg in args:
             self.traverse(arg)
         # 3. CALL
-        self.emit(f"CALL FUNC_{name}")
+        self.emit(f"PUSHA F{name}")
+        self.emit("CALL")
         # 4. POP arguments
+        if len(args) > 0:
+            self.emit(f"POP {len(args)}")
+
+    def visit_call(self, node):
+        name = node[1]
+        args = node[2]
+        
+        for arg in args:
+            self.traverse(arg)
+            
+        self.emit(f"PUSHA F{name}")
+        self.emit("CALL")
+        
         if len(args) > 0:
             self.emit(f"POP {len(args)}")
 
     def visit_num(self, node):
         value = node[1]
         self.emit(f"PUSHI {value}")
+
+    def visit_float(self, node):
+        value = node[1]
+        self.emit(f"PUSHF {value}")
 
     def visit_string(self, node):
         value = node[1]
@@ -259,7 +290,7 @@ class CodeGenerator:
         args = node[3]
         body = node[4]
         
-        self.emit(f"FUNC_{func_name}:")
+        self.emit(f"F{func_name}:")
         self.table.enter_scope()
 
         # The return value will be stored at fp[-len(args)]
@@ -268,6 +299,32 @@ class CodeGenerator:
         
         # Local variables pushed after CALL start at fp[1]
         # We manually adjust the internal offset of the SymbolTable
+        self.table._SymbolTable__local_offset = 1
+        
+        for instr in body:
+            self.traverse(instr)
+            if instr[0] == 'declare':
+                for var in instr[2]:
+                    name = var[1]
+                    if name in args:
+                        arg_index = args.index(name)
+                        offset_from_fp = arg_index - len(args) + 1
+                        
+                        local_address = self.table.lookup(name)['address']
+                        
+                        self.emit(f"PUSHL {offset_from_fp}")
+                        self.emit(f"STOREL {local_address}")
+        
+        self.table.exit_scope()
+
+    def visit_subroutine_def(self, node):
+        func_name = node[1]
+        args = node[2]
+        body = node[3]
+        
+        self.emit(f"F{func_name}:")
+        self.table.enter_scope()
+
         self.table._SymbolTable__local_offset = 1
         
         for instr in body:
