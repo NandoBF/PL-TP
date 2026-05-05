@@ -214,3 +214,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# project extensions
+*.vm
+*.out
+
+# isto nao precisa de ir para o git, é só para eu ter tudo no vim e nao ter de estar sempre a abrir browser
+enunciado/ 

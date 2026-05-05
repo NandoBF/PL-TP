@@ -1,0 +1,5 @@
+PROGRAM UNDEC
+INTEGER A
+A = 10
+B = A + 5
+END
