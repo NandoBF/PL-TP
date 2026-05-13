@@ -1,4 +1,3 @@
-
 Daniel Pereira- a106912
 Fernando Ferreira - a106878
 José Fernandes - a104159
@@ -13,9 +12,6 @@ este é capaz de analisar, interpretar e traduzir código _Fortran_ para um form
 ## Arquitetura
 
 ### Léxica
-
-(variaveis scope local)
-(como diferenciar programa de funcao porque acaba ambos em end)
 
 Inicialmente implementamos um _lexer_ responsável por converter o código _Fortran_ para uma lista de _tokens_, foi utilizada a biblioteca _ply.lex_. Este é encarregue de processar o código e descartar caracteres não semânticos restando apenas a lógica.
 No que diz respeito às palavras-chaves o nosso sistema identifica 18 instruções distintas. Entre estas, definições de blocos e subprogramas (`PROGRAM`, `END`, `FUNCTION`, `SUBROUTINE`, `CALL` e `RETURN`), tipos de dados (`INTEGER`, `REAL` e `LOGICAL`), estruturas de controlo de fluxo (`IF`, `THEN`, `ELSE`, `ENDIF`, `DO`, `GOTO` e `CONTINUE`) e comandos de _IO_ (`READ` e `PRINT`). Para otimizar a deteção e suportar sintaxe  de forma _case sensitive_ optámos por capturar  primeiro o identificador genérico, transformá-lo em maiúsculas e validá-lo com um dicionário das palavras suportadas. Devido ao _Fortran_ utilizar pontos para operadores lógicos , definimos expressões regulares para isolar estes operadores como no caso de `.EQ.`, `.AND.` ou `.TRUE.` para garantir que estes não são identificados como pontuação, simultaneamente processamos os simbolos de operações aritméticas, parênteses e sinais de forma direta. Para valores numéricos o _lexer_ desenvolvido  faz a distinção de inteiros e decimais e para _strings_ é feita a separação  por plicas. Por fim é feita
@@ -51,11 +47,87 @@ Este mecanismo alimenta de forma direta a eliminação de código morto nas estr
 
 ## Tradução
 
+A fase final do compilador é responsável por traduzir a Árvore de Sintaxe Abstrata, já otimizada, num ficheiro com extensão `.vm`, compatível com a arquitetura da máquina virtual  _EWVM_. Semelhante à análise semântica, a geração de código baseia-se no padrão _Visitor_ para percorrer hierarquicamente os nós da árvore, ao emitir as instruções equivalentes de forma sequencial através da função `emit`.
 
+```
+def traverse(self, node):
+    if node is None:
+        return
+
+if isinstance(node, list):
+    for n in node:
+        self.traverse(n)
+        return
+        
+node_type = node[0]
+method_name = f'visit_{node_type}'
+visitor = getattr(self, method_name, self.generic_visit)
+visitor(node)
+
+```
+
+Durante o processamento das declarações (`visit_declare`), o compilador calcula o espaço necessário para acomodar escalares e vetoriais, emitindo a instrução `PUSHN` com a dimensão exata para a alocação do espaço para execução. Simultaneamente, o gerador interage com a Tabela de Símbolos para diferenciar contextos. Quando deteta o processamento de uma variável numa operação aritmética ou de atribuição, o compilador consulta ativamente a tabela para averiguar se a variável pertence ao âmbito global ou se é nativa da função atual.
+
+```
+# Exemplo da distinção na geração de código baseada no âmbito da variável 
+info = self.table.lookup(name)
+if info['is_global']: 
+	self.emit(f"STOREG {address}") 
+else: 
+	self.emit(f"STOREL {address}")
+```
+
+Caso seja global, emite instruções focadas no Endereço Global (`STOREG`, `PUSHG`), caso contrário, recorre a instruções locais (`STOREL`, `PUSHL`). O endereço numérico da variável `address` é gerido autonomamente pela tabela ao longo de toda a compilação.
+
+O acesso a _arrays_ exige uma lógica adicional, em vez de aceder a uma posição estática, o compilador emite instruções para colocar o endereço base na pilha (`PUSHGP` ou `PUSHFP`), calcula dinamicamente o índice, e utiliza a instrução de adição de endereços (`PADD`) combinada com uma subtração (`SUB`) para alinhar o acesso real na memória. Nas operações comuns, este mapeia diretamente as expressões matemáticas para as instruções nativas equivalentes . Nas operações _IO_, o compilador consulta o tipo da variável para assegurar a emissão da instrução correta: `WRITEI` para inteiros, `WRITEF` para reais e `WRITES` para series caracteres.
+
+No que diz respeito aos subprogramas, a arquitetura  aquando da definição de uma função,  reserva preventivamente uma posição na memória com a instrução de empilhamento `PUSHN 1` dedicada exclusivamente a armazenar o valor de retorno. Em seguida, os argumentos originais são empilhados na ordem de leitura, antecedendo a instrução de salto para o bloco `CALL`.
+
+O processamento do controlo de fluxo é executado mediante a geração e gestão dinâmica de referências. Este possui um mecanismo incremental de _labels, usado para demarcar os limites de blocos lógicos, como ciclos ou condições. O desvio das condições na instrução `IF` é gerido da seguinte forma: o código avalia as condições booleanas recorrendo aos operadores lógicos da máquina (como por exemplo `SUP` para comparações do tipo "maior que") e acopla ao resultado a instrução de salto caso zero (`JZ`),  isto força a máquina a ignorar as linhas subsequentes do ramo _True_ caso a expressão matemática do cabeçalho avalie de forma negativa.
+
+```
+# Exemplo do processamento de saltos condicionais 
+self.traverse(cond) 
+if else_branch is None: 
+	end_label = self.new_label() 
+	self.emit(f"JZ {end_label}") 
+	self.traverse(then_branch) 
+	self.emit(f"{end_label}:")
+```
+
+Por fim, os ciclos iterativos do Fortran 77 são mapeados de forma não linear. Quando o nó `DO` é lido, este avalia e guarda o valor inicial na variável de controlo, este fixa o rótulo da linha de reinício da repetição no documento. Posteriormente, e de forma isolada, quando o nó correspondente ao `CONTINUE` é atingido no fundo da árvore, o analisador reabre o ficheiro .vm, escreve as instruções para incrementar a variável de controlo em uma unidade (`PUSHI 1`, `ADD`) e efetua a verificação relacional do limite final da iteração (`INFEQ`). Se o limite não tiver sido quebrado, emite a instrução de salto cego em direção ao topo daquele rótulo de reinício.
 
 ## Testes
 
+
+
 ## Instruções de Utilização
+
+Este capítulo detalha os procedimentos necessários para operar o compilador, desde a preparação do ambiente até à execução do código gerado na máquina virtual.
+
+#### Pré-requisitos
+
+O compilador foi desenvolvido em Python, exigindo que a máquina do utilizador possua o interpretador na versão 3 ou superior. Adicionalmente, a arquitetura de análise léxica e sintática depende da biblioteca externa PLY (Python Lex-Yacc). Por conseguinte, antes da primeira execução, o utilizador deve garantir a presença desta dependência.
+
+#### Processo de Compilação
+
+Para iniciar o processo de tradução do código escrito em Fortran 77, o utilizador deve assegurar que o documento de texto com o código se encontra na mesma pasta do projeto. A compilação é feita ao executar o ficheiro principal através do interpretador, passando o nome do ficheiro como argumento direto, com a seguinte sintaxe:
+
+Bash
+
+```
+python main.py codigo.f
+```
+
+#### 4.3. Tratamento de Erros e Output
+
+O comportamento do sistema perante a submissão de código obedece a dois cenários. No caso de uma compilação com sucesso, em que o código Fortran se apresenta válido e isento de erros lógicos, o resultado é a geração de um novo ficheiro na mesma diretoria, que preserva o nome original do documento, mas adota a extensão de máquina virtual `.vm`.
+
+Pelo contrário, no caso de o analisador detetar falhas o ficheiro não é gerado e são imprimidos no terminal o motivo e a localização do erro detetado, orientando o utilizador para a respetiva correção no ficheiro.
+
+#### 4.4. Execução
+
+Concluída a compilação com êxito, o ficheiro resultante encontra-se pronto a ser processado. Para observar o comportamento prático do código, o utilizador deve invocar o executável da máquina virtual através da página fornecida pelos docentes https://ewvm.epl.di.uminho.pt/.
 
 ## Conclusão
 
