@@ -99,7 +99,29 @@ Por fim, os ciclos iterativos do Fortran 77 são mapeados de forma não linear. 
 
 ## Testes
 
+Para garantir a integridade do compilador, foi implementada um conjunto de testes. Esta arquitetura de validação recorre à framework nativa `unittest` do Python. A estratégia de testes encontra-se dividida em três conjuntos de análise. O primeiro foca-se na validação de sucesso através da função de teste de ficheiros válidos. O ficheiro de testes percorre a diretoria de ficheiros corretos, submetendo cada documento ao compilador. O teste apenas é considerado bem-sucedido se o sistema conseguir atravessar as fases léxica, sintática e semântica sem levantar exceções, culminando na verificação física da existência do ficheiro final com extensão `.vm` gerado.
 
+```
+# Validação da geração de código para ficheiros corretos 
+compile_file(filepath, output_path) 
+self.assertTrue(os.path.exists(output_path))
+```
+
+O segundo destina-se a testar o analisador perante código malformado. Através do processamento de uma pasta com ficheiros com falhas de escrita propositadas, o sistema de testes invoca o compilador exigindo, estritamente, que este falhe. A validação comprova que o módulo interceta a quebra das regras gramaticais e bloqueia a execução, confirmando o levantamento da exceção interna de erro sintático (`SyntaxError`).
+
+```
+# Verificação de falha obrigatória perante código malformado 
+with self.assertRaises(SyntaxError, msg=f"File {filename} should have failed syntax analysis."): 
+	compile_file(filepath)
+```
+
+Por fim, o terceiro  foca-se na validação de contexto e regras da linguagem. O sistema carrega um conjunto de programas com sintaxe perfeita, mas com erros lógicos introduzidos, como a utilização de variáveis não declaradas, invocações de subprogramas com inexistentes ou operações matemáticas com incompatibilidade de tipos. Este teste exige que o compilador aborte o processo e devolva o erro semântico específico (`SemanticError`).
+
+```
+# Interceção de erros lógicos e estruturais da linguagem
+with self.assertRaises(SemanticError, msg=f"File {filename} should have failed semantic analysis."): 
+	compile_file(filepath)
+```
 
 ## Instruções de Utilização
 
@@ -127,7 +149,8 @@ Pelo contrário, no caso de o analisador detetar falhas o ficheiro não é gerad
 
 #### 4.4. Execução
 
-Concluída a compilação com êxito, o ficheiro resultante encontra-se pronto a ser processado. Para observar o comportamento prático do código, o utilizador deve invocar o executável da máquina virtual através da página fornecida pelos docentes https://ewvm.epl.di.uminho.pt/.
+Concluída a compilação com êxito, o ficheiro resultante encontra-se pronto a ser processado. Para observar o comportamento prático do código, o utilizador deve invocar o executável da máquina virtual através da página fornecida pelos docentes em,  https://ewvm.epl.di.uminho.pt/.
 
 ## Conclusão
+
 
