@@ -11,11 +11,32 @@ este é capaz de analisar, interpretar e traduzir código _Fortran_ para um form
 
 ## Arquitetura
 
+O compilador foi implementado em _Python_ com recurso à biblioteca _PLY_ e segue uma arquitetura modular organizada em quatro fases sequenciais, complementada por uma etapa de otimização. O pipeline de compilação processa o código fonte na seguinte ordem:
+
+```
+source.f → Lexer → Tokens → Parser → AST → Otimizador → AST otimizada → Análise Semântica → Geração de Código → output.vm
+```
+
+A otimização é aplicada sobre a _AST_ antes da análise semântica, permitindo que as verificações de tipos e de consistência incidam já sobre a árvore simplificada. A organização do projeto reflete esta separação em módulos independentes:
+
+| Ficheiro | Responsabilidade |
+|---|---|
+| `main.py` | Ponto de entrada e processamento de argumentos da linha de comandos |
+| `compiler.py` | Orquestração do pipeline de compilação |
+| `lexer.py` | Análise léxica com `ply.lex` |
+| `parser.py` | Análise sintática com `ply.yacc` |
+| `semantic.py` | Análise semântica com o padrão _Visitor_ |
+| `optimizer.py` | Otimização da _AST_ em tempo de compilação |
+| `codegen.py` | Geração de código para a _EWVM_ |
+| `symbols.py` | Tabela de símbolos com gestão de âmbitos |
+
 ### Léxica
 
 Inicialmente implementamos um _lexer_ responsável por converter o código _Fortran_ para uma lista de _tokens_, foi utilizada a biblioteca _ply.lex_. Este é encarregue de processar o código e descartar caracteres não semânticos restando apenas a lógica.
 No que diz respeito às palavras-chaves o nosso sistema identifica 18 instruções distintas. Entre estas, definições de blocos e subprogramas (`PROGRAM`, `END`, `FUNCTION`, `SUBROUTINE`, `CALL` e `RETURN`), tipos de dados (`INTEGER`, `REAL` e `LOGICAL`), estruturas de controlo de fluxo (`IF`, `THEN`, `ELSE`, `ENDIF`, `DO`, `GOTO` e `CONTINUE`) e comandos de _IO_ (`READ` e `PRINT`). Para otimizar a deteção e suportar sintaxe  de forma _case sensitive_ optámos por capturar  primeiro o identificador genérico, transformá-lo em maiúsculas e validá-lo com um dicionário das palavras suportadas. Devido ao _Fortran_ utilizar pontos para operadores lógicos , definimos expressões regulares para isolar estes operadores como no caso de `.EQ.`, `.AND.` ou `.TRUE.` para garantir que estes não são identificados como pontuação, simultaneamente processamos os simbolos de operações aritméticas, parênteses e sinais de forma direta. Para valores numéricos o _lexer_ desenvolvido  faz a distinção de inteiros e decimais e para _strings_ é feita a separação  por plicas. Por fim é feita
 uma contagem de quebras de linha para identificar o numero exato de linha e de modo a permitir o fluxo normal do _lexer_ sem interrupções, é feito um processamento de tolerância de erros quando é detetado um carácter não suportado.
+
+Relativamente ao formato do código fonte, optamos por implementar o formato livre (_free-form_) invés do formato de colunas fixas do _Fortran 77_ original. Visto que isto simplifica o processamento léxico ao eliminar a necessidade de interpretar as colunas 1 a 6 como zona de rótulos e a coluna 7 como marcador de continuação, permitindo ao utilizador escrever código sem restrições de posicionamento.
 
 ### Sintática 
 
@@ -24,6 +45,25 @@ A seguinte etapa passa por analisar sintaticamente recorrendo ao módulo `ply.ya
 Em relação à amplitude da linguagem, a gramática implementada cobre os requisitos estipulados para o projeto, o nó raiz da estrutura sintática armazena unidades de compilação genéricas que se podem separar de forma modular no bloco principal do programa ou em subprogramas auxiliares, incluindo tanto funções com retorno como sub-rotinas. A partir do nó principal do programa, o analisador sintático desce para as regras específicas da linguagem. Na declaração de variáveis, o sistema distingue uma variável simples de um _array_ verificando a presença de parênteses com um valor numérico associado. Os comandos de entrada e saída, como `READ` e `PRINT`, foram implementados para suportar listas de expressões ou variáveis, oque permite operações com múltiplos valores numa única linha. De igual forma, as instruções de atribuição e o processamento de expressões matemáticas são resolvidos de forma direta, apartir da tabela de precedência já antes referida .
 
 No que diz respeito ao controlo de fluxo, a gramática processa as condições e os ciclos de forma objetiva. Para a instrução `IF`, a regra avalia o comprimento dos _tokens_ capturados para perceber se o utilizador escreveu apenas um bloco `THEN` ou se incluiu também um bloco `ELSE`, construindo o nó da árvore em conformidade. Para os ciclos `DO`, é capturado o rótulo numérico de salto, a variável de iteração e os valores de início e fim. É importante notar que, nesta etapa, o compilador apenas guarda o rótulo numérico na estrutura da árvore, a verificação real para garantir que esse número corresponde a um comando `CONTINUE` válido é deixada exclusivamente para a análise semântica.
+
+
+### Tabela de Símbolos
+
+A tabela de símbolos é implementada no módulo `symbols.py` e é utilizada durante a análise semântica e a geração de código. A tabela utiliza uma lista de dicionários que funciona como pilha de *scopes*. O primeiro dicionário corresponde ao *scope* global e os subsequentes aos *scopes* locais criados durante a travessia de subprogramas.
+
+Cada entrada na tabela regista os seguintes atributos:
+
+| Atributo | Descrição |
+|---|---|
+| `nature` | Tipo da entrada: `variable` ou `function` |
+| `type` | Tipo de dados: `INTEGER`, `REAL`, `LOGICAL` ou `VOID` |
+| `is_array` | Indica se a variável é um vetor |
+| `size` | Dimensão do vetor, quando aplicável |
+| `initialized` | Indica se a variável já recebeu um valor |
+| `address` | Endereço numérico na memória da _VM_ |
+| `is_global` | Indica se a variável pertence ao âmbito global |
+
+Para funções, a tabela armazena adicionalmente o campo `arg_num` com o número de argumentos esperados. A gestão dos endereços de memória é feita automaticamente através de dois contadores internos, um para o _offset_ global (utilizado com `PUSHG`/`STOREG`) e outro para o _offset_ local (utilizado com `PUSHL`/`STOREL`). Quando um novo *scope* é criado com `enter_scope`, o contador local é reinicializado a zero, e ao sair com `exit_scope`, o *scope* é descartado da pilha.
 
 ### Semântica
 
@@ -39,6 +79,12 @@ Por fim, o motor valida os subprogramas inspecionando cada comando `CALL` e invo
 
 ## Valorização
 
+Para além dos requisitos mínimos, o compilador implementa duas funcionalidades de valorização: o suporte completo a subprogramas (`FUNCTION` e `SUBROUTINE`) e um conjunto de otimizações sobre a _AST_.
+
+A definição e invocação de subprogramas com passagem de argumentos, gestão de *scopes* locais e valores de retorno está integrada em todas as fases do compilador, desde a análise sintática até à geração de código com instruções `CALL`, `RETURN` e manipulação do _frame pointer_.
+
+### Otimização de Código
+
 A otimização de código realizada incide diretamente na Árvore de Sintaxe Abstrata em tempo de compilação. A técnica principal implementada é _Constant Folding_, que deteta operações onde ambos os operandos são literais conhecidos e em vez de gerar múltiplas instruções para a máquina virtual, como empilhar dois valores distintos para depois executar uma adição, o compilador resolve o cálculo antecipadamente e gera um nó único com o resultado final. Este método aplica-se a todas as operações aritméticas e relacionais. Por exemplo, uma comparação matemática entre duas constantes é imediatamente reduzida a um valor lógico, o que poupa instruções geradas e liberta recursos de processamento.
 
 Adicionalmente, foi incluída uma lógica de _Boolean Short-Circuit_. Numa operação lógica do tipo `AND`, se o lado esquerdo for avaliado como falso, o resultado final será garantidamente falso, tornando inútil a avaliação do lado direito. Nestes casos, o compilador simplesmente apaga o ramo direito da árvore e todo o seu processamento pendente, reduzindo o nó inteiro a uma constante falsa.
@@ -49,21 +95,20 @@ Este mecanismo alimenta de forma direta a eliminação de código morto nas estr
 
 A fase final do compilador é responsável por traduzir a Árvore de Sintaxe Abstrata, já otimizada, num ficheiro com extensão `.vm`, compatível com a arquitetura da máquina virtual  _EWVM_. Semelhante à análise semântica, a geração de código baseia-se no padrão _Visitor_ para percorrer hierarquicamente os nós da árvore, ao emitir as instruções equivalentes de forma sequencial através da função `emit`.
 
-```
+```python
 def traverse(self, node):
     if node is None:
         return
 
-if isinstance(node, list):
-    for n in node:
-        self.traverse(n)
+    if isinstance(node, list):
+        for n in node:
+            self.traverse(n)
         return
-        
-node_type = node[0]
-method_name = f'visit_{node_type}'
-visitor = getattr(self, method_name, self.generic_visit)
-visitor(node)
 
+    node_type = node[0]
+    method_name = f'visit_{node_type}'
+    visitor = getattr(self, method_name, self.generic_visit)
+    visitor(node)
 ```
 
 Durante o processamento das declarações (`visit_declare`), o compilador calcula o espaço necessário para acomodar escalares e vetoriais, emitindo a instrução `PUSHN` com a dimensão exata para a alocação do espaço para execução. Simultaneamente, o gerador interage com a Tabela de Símbolos para diferenciar contextos. Quando deteta o processamento de uma variável numa operação aritmética ou de atribuição, o compilador consulta ativamente a tabela para averiguar se a variável pertence ao âmbito global ou se é nativa da função atual.
@@ -123,6 +168,16 @@ with self.assertRaises(SemanticError, msg=f"File {filename} should have failed s
 	compile_file(filepath)
 ```
 
+Os ficheiros de teste utilizados encontram-se organizados em três diretorias dentro de `tests/`:
+
+| Diretoria | Ficheiros | Objetivo |
+|---|---|---|
+| `valid/` | `arrays.f`, `floats_mod.f`, `functions.f`, `loops.f`, `math.f`, `subroutine.f` | Programas corretos que devem compilar com sucesso e gerar o respetivo `.vm` |
+| `invalid_syntax/` | `bad_program.f` | Programas com erros gramaticais que devem ser rejeitados pelo parser |
+| `invalid_semantic/` | `bad_args.f`, `type_mismatch.f`, `undeclared.f`, `underscore_var.f` | Programas sintaticamente corretos mas com erros lógicos que devem ser detetados pela análise semântica |
+
+O compilador foi também validado contra os programas fornecidos no enunciado do projeto.
+
 ## Instruções de Utilização
 
 Este capítulo detalha os procedimentos necessários para operar o compilador, desde a preparação do ambiente até à execução do código gerado na máquina virtual.
@@ -135,22 +190,40 @@ O compilador foi desenvolvido em Python, exigindo que a máquina do utilizador p
 
 Para iniciar o processo de tradução do código escrito em Fortran 77, o utilizador deve assegurar que o documento de texto com o código se encontra na mesma pasta do projeto. A compilação é feita ao executar o ficheiro principal através do interpretador, passando o nome do ficheiro como argumento direto, com a seguinte sintaxe:
 
-Bash
-
-```
+```bash
 python main.py codigo.f
 ```
 
-#### 4.3. Tratamento de Erros e Output
+Opcionalmente, o utilizador pode especificar o caminho do ficheiro de saída com a flag `-o`:
+
+```bash
+python main.py codigo.f -o saida.vm
+```
+
+Caso a flag não seja fornecida, o compilador gera automaticamente o ficheiro de saída com o mesmo nome do ficheiro de entrada, substituindo a extensão por `.vm`.
+
+#### Tratamento de Erros e Output
 
 O comportamento do sistema perante a submissão de código obedece a dois cenários. No caso de uma compilação com sucesso, em que o código Fortran se apresenta válido e isento de erros lógicos, o resultado é a geração de um novo ficheiro na mesma diretoria, que preserva o nome original do documento, mas adota a extensão de máquina virtual `.vm`.
 
 Pelo contrário, no caso de o analisador detetar falhas o ficheiro não é gerado e são imprimidos no terminal o motivo e a localização do erro detetado, orientando o utilizador para a respetiva correção no ficheiro.
 
-#### 4.4. Execução
+#### Execução
 
-Concluída a compilação com êxito, o ficheiro resultante encontra-se pronto a ser processado. Para observar o comportamento prático do código, o utilizador deve invocar o executável da máquina virtual através da página fornecida pelos docentes em,  https://ewvm.epl.di.uminho.pt/.
+Concluída a compilação com êxito, o ficheiro resultante encontra-se pronto a ser processado. Para observar o comportamento prático do código, o utilizador deve invocar o executável da máquina virtual através da página fornecida pelos docentes em https://ewvm.epl.di.uminho.pt/.
+
+#### Execução dos Testes
+
+Para executar o conjunto de testes automatizados, o utilizador deve correr o seguinte comando a partir da raiz do projeto:
+
+```bash
+python -m unittest tests/run_tests.py
+```
+
+Este comando executa os três conjuntos de validação descritos anteriormente e reporta o resultado de cada teste no terminal.
 
 ## Conclusão
 
+O projeto resultou no desenvolvimento de um compilador funcional para a linguagem _Fortran 77_, capaz de processar código fonte desde a análise léxica até à geração de código executável na máquina virtual _EWVM_. O compilador suporta as construções essenciais da linguagem, incluindo declaração de tipos e variáveis, expressões aritméticas, lógicas e relacionais, estruturas de controlo de fluxo e operações básicas de entrada e saída. Para valorização, foi também implementado o suporte completo a subprogramas e um módulo de otimização sobre a _AST_.
 
+Durante o desenvolvimento, as principais dificuldades encontradas estiveram relacionadas com a gestão de *scopes* na geração de código para subprogramas, nomeadamente o cálculo correto dos _offsets_ do _frame pointer_ para argumentos e variáveis locais. Outra dificuldade encontrada foi a implementação dos ciclos `DO`, cuja tradução para a máquina virtual requer que o incremento e a verificação do limite sejam emitidos no ponto do `CONTINUE` correspondente o que exige uma gestão um pouco mais cuidadosa de estado entre os dois nós da árvore.

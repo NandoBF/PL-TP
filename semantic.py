@@ -204,7 +204,7 @@ class SemanticAnalyzer:
     def visit_if(self, node):
         cond_type = self.traverse(node[1])
         if cond_type != 'LOGICAL' and cond_type != 'UNKNOWN':
-            print(f"Semantic Error: IF condition must be LOGICAL, got {cond_type}")
+            self.errors.append(f"Semantic Error: IF condition must be LOGICAL, got {cond_type}")
         self.traverse(node[2])
         if node[3] is not None:
             self.traverse(node[3])
@@ -257,7 +257,7 @@ class SemanticAnalyzer:
         right_type = self.traverse(node[3])
         
         if left_type == 'LOGICAL' or right_type == 'LOGICAL':
-            print(f"Semantic Error: Invalid arithmetic operation between {left_type} and {right_type}")
+            self.errors.append(f"Semantic Error: Invalid arithmetic operation between {left_type} and {right_type}")
             return 'UNKNOWN'
             
         if left_type == 'REAL' or right_type == 'REAL':
@@ -269,7 +269,7 @@ class SemanticAnalyzer:
         right_type = self.traverse(node[3])
         
         if left_type == 'LOGICAL' or right_type == 'LOGICAL':
-            print(f"Semantic Error: Invalid relational operation between {left_type} and {right_type}")
+            self.errors.append(f"Semantic Error: Invalid relational operation between {left_type} and {right_type}")
             
         return 'LOGICAL'
         
@@ -277,13 +277,13 @@ class SemanticAnalyzer:
         left_type = self.traverse(node[2])
         right_type = self.traverse(node[3])
         if (left_type != 'LOGICAL' and left_type != 'UNKNOWN') or (right_type != 'LOGICAL' and right_type != 'UNKNOWN'):
-            print(f"Semantic Error: Logical operators require LOGICAL operands, got {left_type} and {right_type}")
+            self.errors.append(f"Semantic Error: Logical operators require LOGICAL operands, got {left_type} and {right_type}")
         return 'LOGICAL'
         
     def visit_not(self, node):
         t = self.traverse(node[1])
         if t != 'LOGICAL' and t != 'UNKNOWN':
-            print(f"Semantic Error: .NOT. operator requires LOGICAL operand, got {t}")
+            self.errors.append(f"Semantic Error: .NOT. operator requires LOGICAL operand, got {t}")
         return 'LOGICAL'
 
     def visit_function_call(self, node):
