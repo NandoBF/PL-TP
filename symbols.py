@@ -35,6 +35,10 @@ class SymbolTable():
         curr_scope = self.__scopes[-1]
 
         if id in curr_scope:
+            if curr_scope[id].get('nature') == 'function':
+                if curr_scope[id].get('type') != data_type:
+                    raise SemanticError(f"Semantic Error: Function '{id}' declared with conflicting type '{data_type}'.")
+                return
             raise SemanticError(f"Semantic Error: Double Declaration: '{id}' already exists in this scope!")
 
         size_in_memory = size if is_array else 1

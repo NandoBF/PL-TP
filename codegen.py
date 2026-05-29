@@ -293,13 +293,12 @@ class CodeGenerator:
         self.emit(f"F{func_name}:")
         self.table.enter_scope()
 
-        # The return value will be stored at fp[-len(args)]
+        # The return value will be stored at fp[-len(args) - 1]
         self.table.declare(func_name, func_type)
-        self.table.lookup(func_name)['address'] = -len(args)
+        self.table.lookup(func_name)['address'] = -len(args) - 1
         
-        # Local variables pushed after CALL start at fp[1]
-        # We manually adjust the internal offset of the SymbolTable
-        self.table._SymbolTable__local_offset = 1
+        # Local variables pushed after CALL start at fp[0]
+        self.table._SymbolTable__local_offset = 0
         
         for instr in body:
             self.traverse(instr)
@@ -308,7 +307,7 @@ class CodeGenerator:
                     name = var[1]
                     if name in args:
                         arg_index = args.index(name)
-                        offset_from_fp = arg_index - len(args) + 1
+                        offset_from_fp = arg_index - len(args)
                         
                         local_address = self.table.lookup(name)['address']
                         
@@ -325,7 +324,7 @@ class CodeGenerator:
         self.emit(f"F{func_name}:")
         self.table.enter_scope()
 
-        self.table._SymbolTable__local_offset = 1
+        self.table._SymbolTable__local_offset = 0
         
         for instr in body:
             self.traverse(instr)
@@ -334,7 +333,7 @@ class CodeGenerator:
                     name = var[1]
                     if name in args:
                         arg_index = args.index(name)
-                        offset_from_fp = arg_index - len(args) + 1
+                        offset_from_fp = arg_index - len(args)
                         
                         local_address = self.table.lookup(name)['address']
                         
@@ -344,6 +343,9 @@ class CodeGenerator:
         self.table.exit_scope()
 
     def visit_return(self, node):
+        local_vars = self.table._SymbolTable__local_offset
+        if local_vars > 0:
+            self.emit(f"POP {local_vars}")
         self.emit("RETURN")
 
     def visit_labeled(self, node):
