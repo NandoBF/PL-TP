@@ -265,11 +265,16 @@ class SemanticAnalyzer:
         return 'INTEGER'
         
     def visit_relop(self, node):
+        op = node[1]
         left_type = self.traverse(node[2])
         right_type = self.traverse(node[3])
         
         if left_type == 'LOGICAL' or right_type == 'LOGICAL':
-            self.errors.append(f"Semantic Error: Invalid relational operation between {left_type} and {right_type}")
+            if op.upper() in ('.EQ.', '.NE.'):
+                if left_type != right_type:
+                    self.errors.append(f"Semantic Error: Cannot compare {left_type} and {right_type} using {op}")
+            else:
+                self.errors.append(f"Semantic Error: Invalid relational operation {op} between {left_type} and {right_type}")
             
         return 'LOGICAL'
         
